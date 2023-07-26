@@ -9,6 +9,7 @@ use forge_print::PrintTrait;
 
 use pokemon_cairo::IPokemonsSafeDispatcher;
 use pokemon_cairo::IPokemonsSafeDispatcherTrait;
+use pokemon_cairo::Pokemons::Pokemon;
 
 fn deploy_pokemons() -> ContractAddress {
     let class_hash = declare('Pokemons').unwrap();
@@ -30,7 +31,21 @@ fn test_get_pokemons() {
 
     let pokemons = safe_dispatcher.get_pokemons().unwrap();
 
-    assert(*pokemons.at(0).name == bulbasaur, 'Bulbasaur');
+    assert(*pokemons.at(0).name == 'Bulbasaur', 'Bulbasaur');
     assert(*pokemons.at(1).name == 'Pikachu', 'Pikachu');
     assert(*pokemons.at(2).name == 'Diglett', 'Diglett');
+}
+
+#[test]
+fn test_add_pokemon() {
+    let contract_address = deploy_pokemons();
+
+    let safe_dispatcher = IPokemonsSafeDispatcher { contract_address };
+    let pokemon = Pokemon { name: 'Charmander', kind: 'Fire', likes: 0  };
+
+    safe_dispatcher.add_pokemon(pokemon);
+
+    let pokemons = safe_dispatcher.get_pokemons().unwrap();
+
+    assert(*pokemons.at(3).name == 'Charmander', *pokemons.at(3).name);
 }

@@ -2,18 +2,12 @@
 #[starknet::interface]
 trait IPokemons<TContractState> {
     fn get_pokemons(self: @TContractState) -> Array<Pokemons::Pokemon>;
+    fn add_pokemon(ref self: TContractState, new_pokemon: Pokemons::Pokemon);
 }
-
-
 
 #[starknet::contract]
 mod Pokemons {
     use array::ArrayTrait;
-
-    // struct Owner {
-    //     name: felt252,
-    // }
-
     #[derive(Drop, Serde, Copy, storage_access::StorageAccess)]
     struct Pokemon {
         name: felt252,
@@ -54,6 +48,12 @@ mod Pokemons {
                 i += 1;
             };
             pokemons
+        }
+
+        fn add_pokemon(ref self: ContractState, new_pokemon: Pokemon) {
+            let pokemons_amount = self.counter.read();
+            self.pokemons.write(pokemons_amount, new_pokemon);
+            self.counter.write(pokemons_amount + 1)
         }
     }
 }
