@@ -1,46 +1,59 @@
+
 #[starknet::interface]
 trait IPokemons<TContractState> {
-    fn add_pokemon(ref self: TContractState, amount: felt252);
-    fn get_pokemons(self: @TContractState) -> felt252;
+    fn get_pokemons(self: @TContractState) -> Array<Pokemons::Pokemon>;
 }
+
+
 
 #[starknet::contract]
 mod Pokemons {
-    struct Owner {
-        name: felt252,
-    } 
+    use array::ArrayTrait;
 
-    #[derive(storage_access::StorageAccess)]
+    // struct Owner {
+    //     name: felt252,
+    // }
+
+    #[derive(Drop, Serde, Copy, storage_access::StorageAccess)]
     struct Pokemon {
         name: felt252,
-        type: felt252,
-        likes: felt252
-        owner: Owner
+        kind: felt252,
+        likes: felt252,
     }
 
     #[storage]
     struct Storage {
-        pokemons: LegacyMap::<felt252, Pokemon>
+        pokemons: LegacyMap::<u32, Pokemon>,
+        counter: u32
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState, owner: Person) {
-        let owner = Owner { name: 'init' }
+    fn constructor(ref self: ContractState) {
+        let bulbasaur = Pokemon { name: 'Bulbasaur', kind: 'Grass', likes: 0 };
+        self.pokemons.write(0, bulbasaur);
 
-        let bulbasaur = Rectangle { name: 'Bulbasaur', type: 'Grass', likes: 0, owner: owner   };
-        self.pokemons.write('Bulbasaur', bulbasaur)
+        let pikachu = Pokemon { name: 'Pikachu', kind: 'Electric', likes: 0};
+        self.pokemons.write(1, pikachu);
 
-        let pikachu = Rectangle { name: 'Pikachu', type: 'Electric', likes: 0, owner: owner   };
-        self.pokemons.write('Pikachu', pikachu)
-
-        let diglett = Rectangle { name: 'Diglett', type: 'Ground', likes: 0, owner: owner   };
-        self.pokemons.write('Diglett', diglett)
+        let diglett = Pokemon { name: 'Diglett', kind: 'Ground', likes: 0 };
+        self.pokemons.write(2, diglett);
+        self.counter.write(3);
     }
 
     #[external(v0)]
     impl PokemonsImpl of super::IPokemons<ContractState> {
-        fn get_pokemons(self: @ContractState) -> {
-            self.pokemons.read()
+        fn get_pokemons(self: @ContractState) -> Array<Pokemon> {
+            let pokemons_amount = self.counter.read();
+            let mut pokemons: Array<Pokemon> = ArrayTrait::new();
+            let mut i: usize = 0;
+            loop {
+                if i == pokemons_amount {
+                    break;
+                }
+                pokemons.append(self.pokemons.read(i));
+                i += 1;
+            };
+            pokemons
         }
     }
 }
