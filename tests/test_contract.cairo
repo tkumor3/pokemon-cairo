@@ -26,7 +26,6 @@ fn deploy_pokemons() -> ContractAddress {
 #[test]
 fn test_get_pokemons() {
     let contract_address = deploy_pokemons();
-
     let safe_dispatcher = IPokemonsSafeDispatcher { contract_address };
 
     let pokemons = safe_dispatcher.get_pokemons().unwrap();
@@ -39,13 +38,21 @@ fn test_get_pokemons() {
 #[test]
 fn test_add_pokemon() {
     let contract_address = deploy_pokemons();
-
     let safe_dispatcher = IPokemonsSafeDispatcher { contract_address };
+
     let pokemon = Pokemon { name: 'Charmander', kind: 'Fire', likes: 0  };
-
     safe_dispatcher.add_pokemon(pokemon);
-
     let pokemons = safe_dispatcher.get_pokemons().unwrap();
 
     assert(*pokemons.at(3).name == 'Charmander', *pokemons.at(3).name);
+}
+
+#[test]
+fn test_get_pokemon_index_by_name() {
+    let contract_address = deploy_pokemons();
+    let safe_dispatcher = IPokemonsSafeDispatcher { contract_address };
+
+    let index = safe_dispatcher.get_pokemon_index_by_name('Diglett').unwrap();
+
+    assert(index == 2, 'Returns wrong index for pokemon');
 }
