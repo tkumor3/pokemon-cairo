@@ -13,6 +13,29 @@ mod Pokemons {
     use starknet::{ContractAddress, get_caller_address};
     use option::OptionTrait;
 
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        Added: Added,
+        Voted: Voted
+    }
+    #[derive(Drop, starknet::Event)]
+    struct Added {
+        creator: ContractAddress,
+        pokemon_name: felt252,
+    }
+    #[derive(Drop, starknet::Event)]
+    struct Voted {
+        voter: ContractAddress,
+        pokemon_name: felt252,
+    }
+    #[derive(Drop, starknet::Event)]
+    struct StoredName {
+        #[key]
+        user: ContractAddress,
+        name: felt252
+    }
+
     #[derive(Drop, Serde, Copy, storage_access::StorageAccess)]
     struct Pokemon {
         name: felt252,
@@ -71,7 +94,9 @@ mod Pokemons {
                     self.pokemons.write(pokemons_amount, new_pokemon);
                     self.counter.write(pokemons_amount + 1);
                 }
-            }
+            };
+            let caller = get_caller_address();
+            self.emit(Event::Added(Added { creator: caller, pokemon_name: new_pokemon.name }));
         }
 
         fn get_pokemon_index_by_name(self: @ContractState, name: felt252) -> Option<u32> {
@@ -116,6 +141,7 @@ mod Pokemons {
             let mut pokemon = self.pokemons.read(pokemon_index);
             pokemon.likes += 1;
             self.pokemons.write(pokemon_index, pokemon);
+            self.emit(Event::Voted(Voted { voter: caller, pokemon_name: pokemon_name }));
         }
     }
 }
