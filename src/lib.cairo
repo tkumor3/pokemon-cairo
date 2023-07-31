@@ -1,4 +1,3 @@
-
 #[starknet::interface]
 trait IPokemons<TContractState> {
     fn get_pokemons(self: @TContractState) -> Array<Pokemons::Pokemon>;
@@ -55,7 +54,7 @@ mod Pokemons {
         let bulbasaur = Pokemon { name: 'Bulbasaur', kind: 'Grass', likes: 0 };
         self.pokemons.write(0, bulbasaur);
 
-        let pikachu = Pokemon { name: 'Pikachu', kind: 'Electric', likes: 0};
+        let pikachu = Pokemon { name: 'Pikachu', kind: 'Electric', likes: 0 };
         self.pokemons.write(1, pikachu);
 
         let diglett = Pokemon { name: 'Diglett', kind: 'Ground', likes: 0 };
@@ -81,16 +80,17 @@ mod Pokemons {
 
         fn add_pokemon(ref self: ContractState, new_pokemon: Pokemon) {
             let pokemons_amount = self.counter.read();
-            let pokemon_index_option = PokemonsImpl::get_pokemon_index_by_name(@self, new_pokemon.name);
-   
+            let pokemon_index_option = PokemonsImpl::get_pokemon_index_by_name(
+                @self, new_pokemon.name
+            );
 
             match pokemon_index_option {
-                Option::Some(val) => { 
+                Option::Some(val) => {
                     let mut data = ArrayTrait::new();
                     data.append('Name is used');
                     panic(data);
                 },
-                Option::None(_) => {                
+                Option::None(_) => {
                     self.pokemons.write(pokemons_amount, new_pokemon);
                     self.counter.write(pokemons_amount + 1);
                 }
@@ -121,10 +121,10 @@ mod Pokemons {
             let pokemon_index1 = PokemonsImpl::get_pokemon_index_by_name(@self, pokemon_name);
             match pokemon_index1 {
                 Option::Some(val) => {},
-                Option::None(_) =>  {
+                Option::None(_) => {
                     let mut data = ArrayTrait::new();
                     data.append(pokemon_name);
-                    data.append('doesn\'t exists');
+                    data.append('doesnt exists');
                     panic(data);
                 },
             };

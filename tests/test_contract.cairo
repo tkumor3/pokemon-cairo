@@ -12,7 +12,7 @@ use pokemon_cairo::IPokemonsSafeDispatcherTrait;
 use pokemon_cairo::Pokemons::Pokemon;
 
 fn deploy_pokemons() -> ContractAddress {
-    let class_hash = declare('Pokemons').unwrap();
+    let class_hash = declare('Pokemons');
     let prepared = PreparedContract {
         class_hash: class_hash, constructor_calldata: @ArrayTrait::new()
     };
@@ -40,7 +40,7 @@ fn test_add_pokemon() {
     let contract_address = deploy_pokemons();
     let safe_dispatcher = IPokemonsSafeDispatcher { contract_address };
 
-    let pokemon = Pokemon { name: 'Charmander', kind: 'Fire', likes: 0  };
+    let pokemon = Pokemon { name: 'Charmander', kind: 'Fire', likes: 0 };
     safe_dispatcher.add_pokemon(pokemon).unwrap();
 
     let pokemons = safe_dispatcher.get_pokemons().unwrap();
@@ -55,4 +55,49 @@ fn test_get_pokemon_index_by_name() {
     let index = safe_dispatcher.get_pokemon_index_by_name('Diglett').unwrap().unwrap();
 
     assert(index == 2, 'Returns wrong index for pokemon');
+}
+
+#[test]
+fn test_like_pokemon() {
+    let contract_address = deploy_pokemons();
+
+    let caller_address: felt252 = 123;
+    let caller_address: ContractAddress = caller_address.try_into().unwrap();
+
+    start_prank(caller_address, contract_address);
+
+    let safe_dispatcher = IPokemonsSafeDispatcher { contract_address };
+
+    //Should panic if pokemon doesn't exists
+    match safe_dispatcher.like_pokemon('BulbNotExists') {
+        Result::Ok(_) => panic_with_felt252('shouldve panicked'),
+        Result::Err(panic_data) => {
+            assert(*panic_data.at(0) == 'BulbNotExists', *panic_data.at(0));
+            assert(*panic_data.at(1) == 'doesnt exists', *panic_data.at(1));
+        }
+    };
+
+    //Expect increment bulbasaur likes counter
+    safe_dispatcher.like_pokemon('Bulbasaur').unwrap();
+    let pokemons = safe_dispatcher.get_pokemons().unwrap();
+    assert(*pokemons.at(0).likes == 1, 'Bulbasaur should have one like');
+
+    //Should panic if someone like the same pokemon twice
+    match safe_dispatcher.like_pokemon('Bulbasaur') {
+        Result::Ok(_) => panic_with_felt252('shouldve panicked'),
+        Result::Err(panic_data) => {
+            assert(*panic_data.at(0) == 'Already voted', *panic_data.at(0));
+        }
+    };
+
+    //Set new caller_address
+    let caller_address: felt252 = 124;
+    let caller_address: ContractAddress = caller_address.try_into().unwrap();
+
+    start_prank(caller_address, contract_address);
+
+    //Expect increment bulbasaur likes counter
+    let index = safe_dispatcher.like_pokemon('Bulbasaur').unwrap();
+    let pokemons = safe_dispatcher.get_pokemons().unwrap();
+    assert(*pokemons.at(0).likes == 2, 'Bulbasaur');
 }
