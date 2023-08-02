@@ -11,6 +11,8 @@ mod Pokemons {
     use array::ArrayTrait;
     use starknet::{ContractAddress, get_caller_address};
     use option::OptionTrait;
+    use debug::PrintTrait;
+    // use openzeppelin::access::ownable::Ownable;
 
     #[event]
     #[derive(Drop, starknet::Event)]
@@ -35,7 +37,7 @@ mod Pokemons {
         name: felt252
     }
 
-    #[derive(Drop, Serde, Copy, storage_access::StorageAccess)]
+    #[derive(Drop, Serde, Copy, starknet::Store)]
     struct Pokemon {
         name: felt252,
         kind: felt252,
@@ -50,16 +52,17 @@ mod Pokemons {
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState) {
+    fn constructor(ref self: ContractState, owner: ContractAddress) {
+        // Ownable.transfer_ownership(owner);
+        self.counter.write(0);
         let bulbasaur = Pokemon { name: 'Bulbasaur', kind: 'Grass', likes: 0 };
-        self.pokemons.write(0, bulbasaur);
+        InternalFunctions::_add_pokemon(ref self, owner, bulbasaur);
 
         let pikachu = Pokemon { name: 'Pikachu', kind: 'Electric', likes: 0 };
-        self.pokemons.write(1, pikachu);
+        InternalFunctions::_add_pokemon(ref self, owner, pikachu);
 
         let diglett = Pokemon { name: 'Diglett', kind: 'Ground', likes: 0 };
-        self.pokemons.write(2, diglett);
-        self.counter.write(3);
+        InternalFunctions::_add_pokemon(ref self, owner, diglett);
     }
 
     #[external(v0)]
@@ -79,24 +82,8 @@ mod Pokemons {
         }
 
         fn add_pokemon(ref self: ContractState, new_pokemon: Pokemon) {
-            let pokemons_amount = self.counter.read();
-            let pokemon_index_option = PokemonsImpl::get_pokemon_index_by_name(
-                @self, new_pokemon.name
-            );
-
-            match pokemon_index_option {
-                Option::Some(val) => {
-                    let mut data = ArrayTrait::new();
-                    data.append('Name is used');
-                    panic(data);
-                },
-                Option::None(_) => {
-                    self.pokemons.write(pokemons_amount, new_pokemon);
-                    self.counter.write(pokemons_amount + 1);
-                }
-            };
             let caller = get_caller_address();
-            self.emit(Event::Added(Added { creator: caller, pokemon_name: new_pokemon.name }));
+            InternalFunctions::_add_pokemon(ref self, caller, new_pokemon);
         }
 
         fn get_pokemon_index_by_name(self: @ContractState, name: felt252) -> Option<u32> {
@@ -118,18 +105,18 @@ mod Pokemons {
 
         fn like_pokemon(ref self: ContractState, pokemon_name: felt252) {
             let caller = get_caller_address();
-            let pokemon_index1 = PokemonsImpl::get_pokemon_index_by_name(@self, pokemon_name);
-            match pokemon_index1 {
+            let pokemon_index = PokemonsImpl::get_pokemon_index_by_name(@self, pokemon_name);
+
+            match pokemon_index {
                 Option::Some(val) => {},
                 Option::None(_) => {
                     let mut data = ArrayTrait::new();
                     data.append(pokemon_name);
                     data.append('doesnt exists');
-                    panic(data);
-                },
+                    panic(data)
+                }
             };
-            let pokemon_index = pokemon_index1.unwrap();
-
+            let pokemon_index = pokemon_index.unwrap();
             let hasVoted = self.likes.read((caller, pokemon_index));
             if hasVoted == true {
                 let mut data = ArrayTrait::new();
@@ -142,6 +129,31 @@ mod Pokemons {
             pokemon.likes += 1;
             self.pokemons.write(pokemon_index, pokemon);
             self.emit(Event::Voted(Voted { voter: caller, pokemon_name: pokemon_name }));
+        }
+    }
+    #[generate_trait]
+    impl InternalFunctions of InternalFunctionsTrait {
+        fn _add_pokemon(ref self: ContractState, caller: ContractAddress, new_pokemon: Pokemon) {
+            let pokemons_amount = self.counter.read();
+
+            let pokemon_index_option = if pokemons_amount == 0 {
+                Option::None(())
+            } else {
+                PokemonsImpl::get_pokemon_index_by_name(@self, new_pokemon.name)
+            };
+
+            match pokemon_index_option {
+                Option::Some(val) => {
+                    let mut data = ArrayTrait::new();
+                    data.append('Name is used');
+                    panic(data);
+                },
+                Option::None(_) => {
+                    self.pokemons.write(pokemons_amount, new_pokemon);
+                    self.counter.write(pokemons_amount + 1);
+                }
+            };
+            self.emit(Event::Added(Added { creator: caller, pokemon_name: new_pokemon.name }));
         }
     }
 }

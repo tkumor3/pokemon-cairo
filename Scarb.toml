@@ -6,9 +6,11 @@ version = "0.1.0"
 
 [[target.starknet-contract]]
 sierra = true
+casm = true
 
 [dependencies]
-starknet = "2.0.1"
+openzeppelin = { git = "https://github.com/maciektr/cairo-contracts", branch = "maciektr/scarb-2" }
+starknet = "2.1.0-rc2"
 
 [tool.snforge]
 # exit_first = true

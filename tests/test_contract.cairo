@@ -13,12 +13,16 @@ use pokemon_cairo::Pokemons::Pokemon;
 
 fn deploy_pokemons() -> ContractAddress {
     let class_hash = declare('Pokemons');
-    let prepared = PreparedContract {
-        class_hash: class_hash, constructor_calldata: @ArrayTrait::new()
-    };
-    let contract_address = deploy(prepared).unwrap();
 
-    let contract_address: ContractAddress = contract_address.try_into().unwrap();
+    let mut constructor_calldata = ArrayTrait::new();
+
+    constructor_calldata.append(123);
+
+    let prepared = PreparedContract {
+        class_hash: class_hash, constructor_calldata: @constructor_calldata
+    };
+
+    let contract_address = deploy(prepared).unwrap();
 
     contract_address
 }
@@ -39,6 +43,9 @@ fn test_get_pokemons() {
 fn test_add_pokemon() {
     let contract_address = deploy_pokemons();
     let safe_dispatcher = IPokemonsSafeDispatcher { contract_address };
+    let caller_address: ContractAddress = 123.try_into().unwrap();
+
+    start_prank(caller_address, contract_address);
 
     let pokemon = Pokemon { name: 'Charmander', kind: 'Fire', likes: 0 };
     safe_dispatcher.add_pokemon(pokemon).unwrap();
@@ -64,7 +71,7 @@ fn test_like_pokemon() {
     let caller_address: felt252 = 123;
     let caller_address: ContractAddress = caller_address.try_into().unwrap();
 
-    start_prank(caller_address, contract_address);
+    start_prank(contract_address, caller_address);
 
     let safe_dispatcher = IPokemonsSafeDispatcher { contract_address };
 
@@ -90,14 +97,21 @@ fn test_like_pokemon() {
         }
     };
 
-    //Set new caller_address
-    let caller_address: felt252 = 124;
+    stop_prank(contract_address);
+    // //Set new caller_address
+    let caller_address: felt252 = 1234;
     let caller_address: ContractAddress = caller_address.try_into().unwrap();
 
-    start_prank(caller_address, contract_address);
+    start_prank(contract_address, caller_address);
 
     //Expect increment bulbasaur likes counter
-    let index = safe_dispatcher.like_pokemon('Bulbasaur').unwrap();
+    match safe_dispatcher.like_pokemon('Bulbasaur') {
+        Result::Ok(e) => {},
+        Result::Err(e) => {
+            e.print();
+        }
+    }
+
     let pokemons = safe_dispatcher.get_pokemons().unwrap();
-    assert(*pokemons.at(0).likes == 2, 'Bulbasaur');
+    assert(*pokemons.at(0).likes == 2, *pokemons.at(0).likes);
 }
